@@ -3,6 +3,8 @@ package dbr
 import (
 	"database/sql"
 	"reflect"
+
+	"github.com/jackc/pgx/v4"
 )
 
 type interfaceLoader struct {
@@ -12,6 +14,15 @@ type interfaceLoader struct {
 
 func InterfaceLoader(value interface{}, concreteType interface{}) interface{} {
 	return interfaceLoader{value, reflect.TypeOf(concreteType)}
+}
+
+func rowColumns(rows pgx.Rows) []string {
+	fieldDescriptions := rows.FieldDescriptions()
+	names := make([]string, 0, len(fieldDescriptions))
+	for _, field := range fieldDescriptions {
+		names = append(names, string(field.Name))
+	}
+	return names
 }
 
 // Load loads any value from sql.Rows.
@@ -28,13 +39,10 @@ func InterfaceLoader(value interface{}, concreteType interface{}) interface{} {
 //
 // 4. map of slice; like map, values with the same key are
 // collected with a slice.
-func Load(rows *sql.Rows, value interface{}) (int, error) {
+func Load(rows pgx.Rows, value interface{}) (int, error) {
 	defer rows.Close()
 
-	column, err := rows.Columns()
-	if err != nil {
-		return 0, err
-	}
+	column := rowColumns(rows)
 	ptr := make([]interface{}, len(column))
 
 	var v reflect.Value
@@ -98,7 +106,7 @@ func Load(rows *sql.Rows, value interface{}) (int, error) {
 				ptr[i] = dummyDest
 			}
 		}
-		err = rows.Scan(ptr...)
+		err := rows.Scan(ptr...)
 		if err != nil {
 			return 0, err
 		}

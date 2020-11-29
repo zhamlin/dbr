@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2/dialect"
+	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,11 +24,15 @@ var (
 	mysqlDSN    = os.Getenv("DBR_TEST_MYSQL_DSN")
 	postgresDSN = os.Getenv("DBR_TEST_POSTGRES_DSN")
 	sqlite3DSN  = ":memory:"
-	mssqlDSN = os.Getenv("DBR_TEST_MSSQL_DSN")
+	mssqlDSN    = os.Getenv("DBR_TEST_MSSQL_DSN")
 )
 
 func createSession(driver, dsn string) *Session {
-	conn, err := Open(driver, dsn, &testTraceReceiver{})
+	config, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		panic(err)
+	}
+	conn, err := Open(context.Background(), config, &testTraceReceiver{})
 	if err != nil {
 		panic(err)
 	}
@@ -91,7 +96,7 @@ func reset(t *testing.T, sess *Session) {
 			bool_val %s NULL
 		)`, autoIncrementType, datetimeType, boolType),
 	} {
-		_, err := sess.Exec(v)
+		_, err := sess.Exec(context.Background(), v)
 		require.NoError(t, err)
 	}
 	// clear test data collected by testTraceReceiver
@@ -119,8 +124,7 @@ func TestBasicCRUD(t *testing.T) {
 		result, err := sess.InsertInto("dbr_people").Columns(insertColumns...).Record(&jonathan).Exec()
 		require.NoError(t, err)
 
-		rowsAffected, err := result.RowsAffected()
-		require.NoError(t, err)
+		rowsAffected := result.RowsAffected()
 		require.Equal(t, int64(1), rowsAffected)
 
 		require.True(t, jonathan.Id > 0)
@@ -147,8 +151,7 @@ func TestBasicCRUD(t *testing.T) {
 		result, err = sess.Update("dbr_people").Where(Eq("id", jonathan.Id)).Set("name", "jonathan1").Exec()
 		require.NoError(t, err)
 
-		rowsAffected, err = result.RowsAffected()
-		require.NoError(t, err)
+		rowsAffected = result.RowsAffected()
 		require.Equal(t, int64(1), rowsAffected)
 
 		var n NullInt64
@@ -159,8 +162,7 @@ func TestBasicCRUD(t *testing.T) {
 		result, err = sess.DeleteFrom("dbr_people").Where(Eq("id", jonathan.Id)).Exec()
 		require.NoError(t, err)
 
-		rowsAffected, err = result.RowsAffected()
-		require.NoError(t, err)
+		rowsAffected = result.RowsAffected()
 		require.Equal(t, int64(1), rowsAffected)
 
 		// select id
@@ -204,7 +206,7 @@ func TestTimeout(t *testing.T) {
 		sess.Timeout = 0
 		tx, err := sess.Begin()
 		require.NoError(t, err)
-		defer tx.RollbackUnlessCommitted()
+		defer tx.RollbackUnlessCommitted(context.Background())
 		tx.Timeout = time.Nanosecond
 
 		_, err = tx.Select("*").From("dbr_people").Load(&people)

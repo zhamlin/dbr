@@ -1,6 +1,7 @@
 package dbr
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gocraft/dbr/v2/dialect"
@@ -13,7 +14,7 @@ func TestTransactionCommit(t *testing.T) {
 
 		tx, err := sess.Begin()
 		require.NoError(t, err)
-		defer tx.RollbackUnlessCommitted()
+		defer tx.RollbackUnlessCommitted(context.Background())
 
 		elem_count := 1
 		if sess.Dialect == dialect.MSSQL {
@@ -33,11 +34,10 @@ func TestTransactionCommit(t *testing.T) {
 		require.Equal(t, elem_count, sess.EventReceiver.(*testTraceReceiver).finished)
 		require.Equal(t, 0, sess.EventReceiver.(*testTraceReceiver).errored)
 
-		rowsAffected, err := result.RowsAffected()
-		require.NoError(t, err)
+		rowsAffected := result.RowsAffected()
 		require.Equal(t, int64(1), rowsAffected)
 
-		err = tx.Commit()
+		err = tx.Commit(context.Background())
 		require.NoError(t, err)
 
 		var person dbrPerson
@@ -53,7 +53,7 @@ func TestTransactionRollback(t *testing.T) {
 
 		tx, err := sess.Begin()
 		require.NoError(t, err)
-		defer tx.RollbackUnlessCommitted()
+		defer tx.RollbackUnlessCommitted(context.Background())
 
 		if sess.Dialect == dialect.MSSQL {
 			tx.UpdateBySql("SET IDENTITY_INSERT dbr_people ON;").Exec()
@@ -63,11 +63,10 @@ func TestTransactionRollback(t *testing.T) {
 		result, err := tx.InsertInto("dbr_people").Columns("id", "name", "email").Values(id, "Barack", "obama@whitehouse.gov").Exec()
 		require.NoError(t, err)
 
-		rowsAffected, err := result.RowsAffected()
-		require.NoError(t, err)
+		rowsAffected := result.RowsAffected()
 		require.Equal(t, int64(1), rowsAffected)
 
-		err = tx.Rollback()
+		err = tx.Rollback(context.Background())
 		require.NoError(t, err)
 
 		var person dbrPerson

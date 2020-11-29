@@ -1,6 +1,7 @@
 package dbr
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func TestNullTypesScanning(t *testing.T) {
 			_, err = tx.InsertInto("null_types").Columns("id", "string_val", "int64_val", "float64_val", "time_val", "bool_val").Record(test.in).Exec()
 			require.NoError(t, err)
 
-			err = tx.Commit()
+			err = tx.Commit(context.Background())
 			require.NoError(t, err)
 
 			var record nullTypedRecord

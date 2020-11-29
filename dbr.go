@@ -3,37 +3,27 @@ package dbr
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/gocraft/dbr/v2/dialect"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Open creates a Connection.
 // log can be nil to ignore logging.
-func Open(driver, dsn string, log EventReceiver) (*Connection, error) {
+func Open(ctx context.Context, config *pgxpool.Config, log EventReceiver) (*Connection, error) {
 	if log == nil {
 		log = nullReceiver
 	}
-	conn, err := sql.Open(driver, dsn)
+	dbpool, err := pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	var d Dialect
-	switch driver {
-	case "mysql":
-		d = dialect.MySQL
-	case "postgres", "pgx":
-		d = dialect.PostgreSQL
-	case "sqlite3":
-		d = dialect.SQLite3
-	case "mssql":
-		d = dialect.MSSQL
-	default:
-		return nil, ErrNotSupported
-	}
-	return &Connection{DB: conn, EventReceiver: log, Dialect: d}, nil
+	d := dialect.PostgreSQL
+	return &Connection{Pool: dbpool, EventReceiver: log, Dialect: d}, nil
 }
 
 const (
@@ -43,7 +33,7 @@ const (
 // Connection wraps sql.DB with an EventReceiver
 // to send events, errors, and timings.
 type Connection struct {
-	*sql.DB
+	*pgxpool.Pool
 	Dialect
 	EventReceiver
 }
@@ -101,11 +91,11 @@ type SessionRunner interface {
 
 type runner interface {
 	GetTimeout() time.Duration
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	Exec(ctx context.Context, query string, args ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
 }
 
-func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect) (sql.Result, error) {
+func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect) (pgconn.CommandTag, error) {
 	timeout := runner.GetTimeout()
 	if timeout > 0 {
 		var cancel func()
@@ -140,7 +130,7 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 		defer traceImpl.SpanFinish(ctx)
 	}
 
-	result, err := runner.ExecContext(ctx, query, value...)
+	result, err := runner.Exec(ctx, query, value...)
 	if err != nil {
 		if hasTracingImpl {
 			traceImpl.SpanError(ctx, err)
@@ -152,7 +142,7 @@ func exec(ctx context.Context, runner runner, log EventReceiver, builder Builder
 	return result, nil
 }
 
-func queryRows(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect) (string, *sql.Rows, error) {
+func queryRows(ctx context.Context, runner runner, log EventReceiver, builder Builder, d Dialect) (string, pgx.Rows, error) {
 	// discard the timeout set in the runner, the context should not be canceled
 	// implicitly here but explicitly by the caller since the returned *sql.Rows
 	// may still listening to the context
@@ -183,7 +173,7 @@ func queryRows(ctx context.Context, runner runner, log EventReceiver, builder Bu
 		defer traceImpl.SpanFinish(ctx)
 	}
 
-	rows, err := runner.QueryContext(ctx, query, value...)
+	rows, err := runner.Query(ctx, query, value...)
 	if err != nil {
 		if hasTracingImpl {
 			traceImpl.SpanError(ctx, err)

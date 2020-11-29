@@ -2,10 +2,10 @@ package dbr
 
 import (
 	"context"
-	"database/sql"
 	"strconv"
 
 	"github.com/gocraft/dbr/v2/dialect"
+	"github.com/jackc/pgx/v4"
 )
 
 // SelectStmt builds `SELECT ...`.
@@ -392,11 +392,11 @@ func (b *SelectStmt) As(alias string) Builder {
 }
 
 // Rows executes the query and returns the rows returned, or any error encountered.
-func (b *SelectStmt) Rows() (*sql.Rows, error) {
+func (b *SelectStmt) Rows() (pgx.Rows, error) {
 	return b.RowsContext(context.Background())
 }
 
-func (b *SelectStmt) RowsContext(ctx context.Context) (*sql.Rows, error) {
+func (b *SelectStmt) RowsContext(ctx context.Context) (pgx.Rows, error) {
 	_, rows, err := queryRows(ctx, b.runner, b.EventReceiver, b, b.Dialect)
 	return rows, err
 }
@@ -445,13 +445,7 @@ func (b *SelectStmt) IterateContext(ctx context.Context) (Iterator, error) {
 		}
 		return nil, err
 	}
-	columns, err := rows.Columns()
-	if err != nil {
-		if rows != nil {
-			rows.Close()
-		}
-		return nil, err
-	}
+	columns := rowColumns(rows)
 	iterator := iteratorInternals{
 		rows:    rows,
 		columns: columns,

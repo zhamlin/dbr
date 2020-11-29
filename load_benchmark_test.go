@@ -19,7 +19,7 @@ func BenchmarkLoadValues(b *testing.B) {
 			body text
 		)`,
 	} {
-		_, err := sess.Exec(v)
+		_, err := sess.Exec(context.Background(), v)
 		require.NoError(b, err)
 	}
 	tx, err := sess.Begin()
@@ -34,7 +34,7 @@ func BenchmarkLoadValues(b *testing.B) {
 			Exec()
 		require.NoError(b, err)
 	}
-	err = tx.Commit()
+	err = tx.Commit(context.Background())
 	require.NoError(b, err)
 
 	type Suggestion struct {

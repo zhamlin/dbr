@@ -1,8 +1,9 @@
 package dbr
 
 import (
-	"database/sql"
 	"reflect"
+
+	"github.com/jackc/pgx/v4"
 )
 
 // Iterator is an interface to iterate over the result of a sql query
@@ -26,7 +27,7 @@ type recordMeta struct {
 	columns       []string
 }
 
-func (m *recordMeta) scan(rows *sql.Rows, value interface{}) (err error) {
+func (m *recordMeta) scan(rows pgx.Rows, value interface{}) (err error) {
 	var v, elem, keyElem reflect.Value
 
 	if il, ok := value.(interfaceLoader); ok {
@@ -130,7 +131,7 @@ func newRecordMeta(column []string, value interface{}) (meta *recordMeta, err er
 
 // iteratorInternals is the Iterator implementation (hidden)
 type iteratorInternals struct {
-	rows       *sql.Rows
+	rows       pgx.Rows
 	recordMeta *recordMeta
 	columns    []string
 }
@@ -162,7 +163,8 @@ func (i *iteratorInternals) Close() error {
 		i.rows.Close()
 		return err
 	}
-	return i.rows.Close()
+	i.rows.Close()
+	return nil
 }
 
 // Err returns the error that was encountered during iteration, or nil.

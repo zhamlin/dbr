@@ -2,6 +2,7 @@ package dbr
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,7 +24,7 @@ func benchmarkBytea(b *testing.B, sess *Session) {
 			val bytea
 		)`,
 	} {
-		_, err := sess.Exec(v)
+		_, err := sess.Exec(context.Background(), v)
 		require.NoError(b, err)
 	}
 	b.ResetTimer()

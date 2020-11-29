@@ -4,13 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/jackc/pgx/v4"
 )
 
 // Tx is a transaction created by Session.
 type Tx struct {
 	EventReceiver
 	Dialect
-	*sql.Tx
+	pgx.Tx
 	Timeout time.Duration
 }
 
@@ -20,7 +22,7 @@ func (tx *Tx) GetTimeout() time.Duration {
 }
 
 // BeginTx creates a transaction with TxOptions.
-func (sess *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
+func (sess *Session) BeginTx(ctx context.Context, opts pgx.TxOptions) (*Tx, error) {
 	tx, err := sess.Connection.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, sess.EventErr("dbr.begin.error", err)
@@ -37,12 +39,12 @@ func (sess *Session) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, err
 
 // Begin creates a transaction for the given session.
 func (sess *Session) Begin() (*Tx, error) {
-	return sess.BeginTx(context.Background(), nil)
+	return sess.BeginTx(context.Background(), pgx.TxOptions{})
 }
 
 // Commit finishes the transaction.
-func (tx *Tx) Commit() error {
-	err := tx.Tx.Commit()
+func (tx *Tx) Commit(ctx context.Context) error {
+	err := tx.Tx.Commit(ctx)
 	if err != nil {
 		return tx.EventErr("dbr.commit.error", err)
 	}
@@ -51,8 +53,8 @@ func (tx *Tx) Commit() error {
 }
 
 // Rollback cancels the transaction.
-func (tx *Tx) Rollback() error {
-	err := tx.Tx.Rollback()
+func (tx *Tx) Rollback(ctx context.Context) error {
+	err := tx.Tx.Rollback(ctx)
 	if err != nil {
 		return tx.EventErr("dbr.rollback", err)
 	}
@@ -67,8 +69,8 @@ func (tx *Tx) Rollback() error {
 // have to handle N failure cases.
 // Keep in mind the only way to detect an error on the rollback
 // is via the event log.
-func (tx *Tx) RollbackUnlessCommitted() {
-	err := tx.Tx.Rollback()
+func (tx *Tx) RollbackUnlessCommitted(ctx context.Context) {
+	err := tx.Tx.Rollback(ctx)
 	if err == sql.ErrTxDone {
 		// ok
 	} else if err != nil {

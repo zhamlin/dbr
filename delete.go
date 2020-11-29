@@ -2,8 +2,9 @@ package dbr
 
 import (
 	"context"
-	"database/sql"
 	"strconv"
+
+	"github.com/jackc/pgconn"
 )
 
 // DeleteStmt builds `DELETE ...`.
@@ -131,10 +132,10 @@ func (b *DeleteStmt) Comment(comment string) *DeleteStmt {
 	return b
 }
 
-func (b *DeleteStmt) Exec() (sql.Result, error) {
+func (b *DeleteStmt) Exec() (pgconn.CommandTag, error) {
 	return b.ExecContext(context.Background())
 }
 
-func (b *DeleteStmt) ExecContext(ctx context.Context) (sql.Result, error) {
+func (b *DeleteStmt) ExecContext(ctx context.Context) (pgconn.CommandTag, error) {
 	return exec(ctx, b.runner, b.EventReceiver, b, b.Dialect)
 }

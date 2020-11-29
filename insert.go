@@ -2,11 +2,11 @@ package dbr
 
 import (
 	"context"
-	"database/sql"
 	"reflect"
 	"strings"
 
 	"github.com/gocraft/dbr/v2/dialect"
+	"github.com/jackc/pgconn"
 )
 
 // InsertStmt builds `INSERT INTO ...`.
@@ -234,20 +234,20 @@ func (b *InsertStmt) Pair(column string, value interface{}) *InsertStmt {
 	return b
 }
 
-func (b *InsertStmt) Exec() (sql.Result, error) {
+func (b *InsertStmt) Exec() (pgconn.CommandTag, error) {
 	return b.ExecContext(context.Background())
 }
 
-func (b *InsertStmt) ExecContext(ctx context.Context) (sql.Result, error) {
+func (b *InsertStmt) ExecContext(ctx context.Context) (pgconn.CommandTag, error) {
 	result, err := exec(ctx, b.runner, b.EventReceiver, b, b.Dialect)
 	if err != nil {
 		return nil, err
 	}
 
 	if b.RecordID != nil {
-		if id, err := result.LastInsertId(); err == nil {
-			*b.RecordID = id
-		}
+		// if id, err := result.LastInsertId(); err == nil {
+		// 	*b.RecordID = id
+		// }
 		b.RecordID = nil
 	}
 

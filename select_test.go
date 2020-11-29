@@ -1,6 +1,7 @@
 package dbr
 
 import (
+	"context"
 	"testing"
 
 	"github.com/lib/pq"
@@ -183,7 +184,7 @@ func TestPostgresArray(t *testing.T) {
 			val integer[]
 		)`,
 	} {
-		_, err := sess.Exec(v)
+		_, err := sess.Exec(context.Background(), v)
 		require.NoError(t, err)
 	}
 

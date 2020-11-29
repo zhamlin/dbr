@@ -2,8 +2,9 @@ package dbr
 
 import (
 	"context"
-	"database/sql"
 	"strconv"
+
+	"github.com/jackc/pgconn"
 )
 
 // UpdateStmt builds `UPDATE ...`.
@@ -197,11 +198,11 @@ func (b *UpdateStmt) Comment(comment string) *UpdateStmt {
 	return b
 }
 
-func (b *UpdateStmt) Exec() (sql.Result, error) {
+func (b *UpdateStmt) Exec() (pgconn.CommandTag, error) {
 	return b.ExecContext(context.Background())
 }
 
-func (b *UpdateStmt) ExecContext(ctx context.Context) (sql.Result, error) {
+func (b *UpdateStmt) ExecContext(ctx context.Context) (pgconn.CommandTag, error) {
 	return exec(ctx, b.runner, b.EventReceiver, b, b.Dialect)
 }
 
