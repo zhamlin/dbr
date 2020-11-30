@@ -13,7 +13,7 @@ func BenchmarkByteaNoBinaryEncode(b *testing.B) {
 }
 
 func BenchmarkByteaBinaryEncode(b *testing.B) {
-	benchmarkBytea(b, postgresBinarySession)
+	benchmarkBytea(b, postgresSession)
 }
 
 func benchmarkBytea(b *testing.B, sess *Session) {

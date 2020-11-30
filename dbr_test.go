@@ -22,7 +22,7 @@ import (
 
 var (
 	mysqlDSN    = os.Getenv("DBR_TEST_MYSQL_DSN")
-	postgresDSN = os.Getenv("DBR_TEST_POSTGRES_DSN")
+	postgresDSN = `postgres://postgres:postgres@127.0.0.1:5432/authy?sslmode=disable`
 	sqlite3DSN  = ":memory:"
 	mssqlDSN    = os.Getenv("DBR_TEST_MSSQL_DSN")
 )
@@ -32,6 +32,9 @@ func createSession(driver, dsn string) *Session {
 	if err != nil {
 		panic(err)
 	}
+	if driver != "postgres" {
+		return nil
+	}
 	conn, err := Open(context.Background(), config, &testTraceReceiver{})
 	if err != nil {
 		panic(err)
@@ -40,14 +43,14 @@ func createSession(driver, dsn string) *Session {
 }
 
 var (
-	mysqlSession          = createSession("mysql", mysqlDSN)
-	postgresSession       = createSession("postgres", postgresDSN)
-	postgresBinarySession = createSession("postgres", postgresDSN+"&binary_parameters=yes")
-	sqlite3Session        = createSession("sqlite3", sqlite3DSN)
-	mssqlSession          = createSession("mssql", mssqlDSN)
+	// mysqlSession          = createSession("mysql", mysqlDSN)
+	postgresSession = createSession("postgres", postgresDSN)
+	// postgresBinarySession = createSession("postgres", postgresDSN)
+	// sqlite3Session        = createSession("sqlite3", sqlite3DSN)
+	// mssqlSession          = createSession("mssql", mssqlDSN)
 
 	// all test sessions should be here
-	testSession = []*Session{mysqlSession, postgresSession, sqlite3Session, mssqlSession}
+	testSession = []*Session{postgresSession}
 )
 
 type dbrPerson struct {
@@ -173,12 +176,12 @@ func TestBasicCRUD(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	mysqlSession := createSession("mysql", mysqlDSN)
+	// mysqlSession := createSession("mysql", mysqlDSN)
 	postgresSession := createSession("postgres", postgresDSN)
-	sqlite3Session := createSession("sqlite3", sqlite3DSN)
+	// sqlite3Session := createSession("sqlite3", sqlite3DSN)
 
 	// all test sessions should be here
-	testSession := []*Session{mysqlSession, postgresSession, sqlite3Session}
+	testSession := []*Session{postgresSession}
 
 	for _, sess := range testSession {
 		reset(t, sess)
@@ -210,15 +213,15 @@ func TestTimeout(t *testing.T) {
 		tx.Timeout = time.Nanosecond
 
 		_, err = tx.Select("*").From("dbr_people").Load(&people)
-		require.Equal(t, context.DeadlineExceeded, err)
+		require.Equal(t, fmt.Sprintf("context already done: %v", context.DeadlineExceeded), err.Error())
 
 		_, err = tx.InsertInto("dbr_people").Columns("name", "email").Values("test", "test@test.com").Exec()
-		require.Equal(t, context.DeadlineExceeded, err)
+		require.Equal(t, fmt.Sprintf("context already done: %v", context.DeadlineExceeded), err.Error())
 
 		_, err = tx.Update("dbr_people").Set("name", "test1").Exec()
-		require.Equal(t, context.DeadlineExceeded, err)
+		require.Equal(t, fmt.Sprintf("context already done: %v", context.DeadlineExceeded), err.Error())
 
 		_, err = tx.DeleteFrom("dbr_people").Exec()
-		require.Equal(t, context.DeadlineExceeded, err)
+		require.Equal(t, fmt.Sprintf("context already done: %v", context.DeadlineExceeded), err.Error())
 	}
 }

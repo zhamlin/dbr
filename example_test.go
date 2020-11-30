@@ -44,7 +44,7 @@ func ExampleSelectStmt_Load() {
 	// You can override this with struct tags, just like with JSON tags.
 	// This is especially helpful while migrating from legacy systems.
 	var suggestions []Suggestion
-	sess := mysqlSession
+	sess := postgresSession
 	sess.Select("*").From("suggestions").Load(&suggestions)
 }
 
@@ -55,13 +55,13 @@ func ExampleSelectStmt_Where() {
 	// so that you can easily use a single question mark paired with a
 	// dynamically sized slice.
 
-	sess := mysqlSession
+	sess := postgresSession
 	ids := []int64{1, 2, 3, 4, 5}
 	sess.Select("*").From("suggestions").Where("id IN ?", ids)
 }
 
 func ExampleSelectStmt_Join() {
-	sess := mysqlSession
+	sess := postgresSession
 	sess.Select("*").From("suggestions").
 		Join("subdomains", "suggestions.subdomain_id = subdomains.id")
 
@@ -75,14 +75,14 @@ func ExampleSelectStmt_Join() {
 }
 
 func ExampleSelectStmt_As() {
-	sess := mysqlSession
+	sess := postgresSession
 	sess.Select("count(id)").From(
 		Select("*").From("suggestions").As("count"),
 	)
 }
 
 func ExampleInsertStmt_Pair() {
-	sess := mysqlSession
+	sess := postgresSession
 	sess.InsertInto("suggestions").
 		Pair("title", "Gopher").
 		Pair("body", "I love go.")
@@ -98,7 +98,7 @@ func ExampleInsertStmt_Record() {
 		Title:     NewNullString("Gopher"),
 		CreatedAt: time.Now(),
 	}
-	sess := mysqlSession
+	sess := postgresSession
 	sess.InsertInto("suggestions").
 		Columns("title").
 		Record(&sugg).
@@ -109,7 +109,7 @@ func ExampleInsertStmt_Record() {
 }
 
 func ExampleUpdateStmt() {
-	sess := mysqlSession
+	sess := postgresSession
 	sess.Update("suggestions").
 		Set("title", "Gopher").
 		Set("body", "I love go.").
@@ -117,13 +117,13 @@ func ExampleUpdateStmt() {
 }
 
 func ExampleDeleteStmt() {
-	sess := mysqlSession
+	sess := postgresSession
 	sess.DeleteFrom("suggestions").
 		Where("id = ?", 1)
 }
 
 func ExampleTx() {
-	sess := mysqlSession
+	sess := postgresSession
 	tx, err := sess.Begin()
 	if err != nil {
 		return
@@ -169,7 +169,7 @@ func ExampleIterator() {
 		ID   int
 		Name string
 	}
-	sess := mysqlSession
+	sess := postgresSession
 	// Iterate results
 	iter, err := sess.Select("*").From("books").Limit(10).Iterate()
 	if err != nil {

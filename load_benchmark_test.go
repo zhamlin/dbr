@@ -10,7 +10,7 @@ import (
 )
 
 func BenchmarkLoadValues(b *testing.B) {
-	sess := mysqlSession
+	sess := postgresSession
 	for _, v := range []string{
 		`DROP TABLE IF EXISTS suggestions`,
 		`CREATE TABLE suggestions (
