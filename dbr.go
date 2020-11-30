@@ -76,6 +76,9 @@ var (
 // SessionRunner can do anything that a Session can except start a transaction.
 // Both Session and Tx implements this interface.
 type SessionRunner interface {
+	With() *WithBuilder
+	// WithBySql(query string, value ...interface{}) *SelectBuilder
+
 	Select(column ...string) *SelectBuilder
 	SelectBySql(query string, value ...interface{}) *SelectBuilder
 
