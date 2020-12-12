@@ -207,7 +207,10 @@ func (b *UpdateStmt) ExecContext(ctx context.Context) (pgconn.CommandTag, error)
 }
 
 func (b *UpdateStmt) LoadContext(ctx context.Context, value interface{}) error {
-	_, err := query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	count, err := query(ctx, b.runner, b.EventReceiver, b, b.Dialect, value)
+	if count == 0 {
+		return ErrNotFound
+	}
 	return err
 }
 
