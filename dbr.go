@@ -207,5 +207,8 @@ func query(ctx context.Context, runner runner, log EventReceiver, builder Builde
 			"sql": query,
 		})
 	}
+	if count == 0 {
+		return count, ErrNotFound
+	}
 	return count, nil
 }

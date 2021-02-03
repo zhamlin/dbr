@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgconn"
 )
 
 // WithStmt builds `WITH ...`.
@@ -102,6 +103,24 @@ func WithBySql(query string, value ...interface{}) *WithStmt {
 	}
 }
 
+// WithBySql creates a WithStmt from raw query.
+func (sess *Session) WithBySql(query string, value ...interface{}) *WithStmt  {
+	b := WithBySql(query, value...)
+	b.runner = sess
+	b.EventReceiver = sess.EventReceiver
+	b.Dialect = sess.Dialect
+	return b
+}
+
+// WithBySql  creates a WithStmt from raw query.
+func (tx *Tx) WithBySql(query string, value ...interface{}) *WithStmt {
+	b := WithBySql(query, value...)
+	b.runner = tx
+	b.EventReceiver = tx.EventReceiver
+	b.Dialect = tx.Dialect
+	return b
+}
+
 func (b *WithStmt) Recursive(v bool) *WithStmt {
 	b.IsRecursive = v
 	return b
@@ -180,4 +199,12 @@ func (b *WithStmt) IterateContext(ctx context.Context) (Iterator, error) {
 		columns: columns,
 	}
 	return &iterator, err
+}
+
+func (b *WithStmt) Exec() (pgconn.CommandTag, error) {
+	return b.ExecContext(context.Background())
+}
+
+func (b *WithStmt) ExecContext(ctx context.Context) (pgconn.CommandTag, error) {
+	return exec(ctx, b.runner, b.EventReceiver, b, b.Dialect)
 }
