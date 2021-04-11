@@ -24,6 +24,10 @@ type InsertStmt struct {
 	ReturnColumn []string
 	RecordID     *int64
 	comments     Comments
+
+	ConflictKey    string
+	ConflictStyle  string
+	ConflictColumn []string
 }
 
 type InsertBuilder = InsertStmt
@@ -88,6 +92,26 @@ func (b *InsertStmt) Build(d Dialect, buf Buffer) error {
 		buf.WriteString(placeholderStr)
 
 		buf.WriteValue(tuple...)
+	}
+
+	if b.ConflictStyle != "" {
+		buf.WriteString(" ON CONFLICT (")
+		buf.WriteString(d.QuoteIdent(b.ConflictKey))
+		buf.WriteString(")")
+
+		switch b.ConflictStyle {
+		case "update":
+			buf.WriteString(" DO UPDATE SET")
+			for i, col := range b.ConflictColumn {
+				if i > 0 {
+					buf.WriteString(",")
+				}
+				quotedCol := d.QuoteIdent(col)
+				buf.WriteString(quotedCol)
+				buf.WriteString(" = EXCLUDED.")
+				buf.WriteString(quotedCol)
+			}
+		}
 	}
 
 	if d != dialect.MSSQL && len(b.ReturnColumn) > 0 {
@@ -216,6 +240,14 @@ func (b *InsertStmt) Record(structValue interface{}) *InsertStmt {
 // Returning specifies the returning columns for postgres/mssql.
 func (b *InsertStmt) Returning(column ...string) *InsertStmt {
 	b.ReturnColumn = column
+	return b
+}
+
+// OnConflictUpdate specifies which columns to update on conflict
+func (b *InsertStmt) OnConflictUpdate(key string, column ...string) *InsertStmt {
+	b.ConflictColumn = column
+	b.ConflictKey = key
+	b.ConflictStyle = "update"
 	return b
 }
 
